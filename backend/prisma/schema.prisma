@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  avatar    String?
+  role      Role     @default(USER)
+  isBanned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  sentMessages     Message[]         @relation("SentMessages")
+  chatParticipants ChatParticipant[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+model Chat {
+  id        String   @id @default(uuid())
+  type      ChatType @default(DIRECT)
+  createdAt DateTime @default(now())
+
+  participants ChatParticipant[]
+  messages     Message[]
+}
+
+enum ChatType {
+  DIRECT
+  GROUP
+}
+
+model ChatParticipant {
+  id     String @id @default(uuid())
+  userId String
+  chatId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chat Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chatId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  text      String
+  senderId  String
+  chatId    String
+  createdAt DateTime @default(now())
+
+  sender User @relation("SentMessages", fields: [senderId], references: [id])
+  chat   Chat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+
+  spamReport SpamReport?
+}
+
+model SpamReport {
+  id        String       @id @default(uuid())
+  messageId String       @unique
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now())
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+}
